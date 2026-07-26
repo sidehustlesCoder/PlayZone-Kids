@@ -1,0 +1,193 @@
+{
+  "start": {
+    "id": "start",
+    "text": "You wake up in a mysterious forest clearing. The sun filters through ancient trees. A worn stone path leads north, a bubbling stream glitters to the east, and something shiny catches your eye to the west.",
+    "choices": [
+      { "label": "Follow the stone path north", "next": "path_north" },
+      { "label": "Head to the stream east", "next": "stream" },
+      { "label": "Investigate the shiny object west", "next": "shiny_object" }
+    ]
+  },
+  "path_north": {
+    "id": "path_north",
+    "text": "The path leads to a crumbling stone tower. The door hangs open. From within you hear a mechanical ticking. A note on the door reads: 'Beware the guardian.'",
+    "choices": [
+      { "label": "Enter the tower", "next": "tower_inside" },
+      { "label": "Turn back and go to the stream", "next": "stream" },
+      { "label": "Sneak around the tower", "next": "tower_back" }
+    ]
+  },
+  "stream": {
+    "id": "stream",
+    "text": "Crystal-clear water flows over smooth stones. A small boat is moored to a root. Upstream you can see ruins. Downstream, a waterfall roars in the distance.",
+    "choices": [
+      { "label": "Take the boat upstream", "next": "ruins" },
+      { "label": "Follow the stream downstream", "next": "waterfall" },
+      { "label": "Head back to the clearing", "next": "start" }
+    ]
+  },
+  "shiny_object": {
+    "id": "shiny_object",
+    "text": "You find an ancient brass compass half-buried in the soil. Its needle spins erratically — then locks on northeast. You also notice strange glowing mushrooms nearby.",
+    "choices": [
+      { "label": "Take the compass and head northeast", "next": "hidden_cave" },
+      { "label": "Eat the glowing mushrooms", "next": "mushroom_vision" },
+      { "label": "Return to the clearing", "next": "start" }
+    ]
+  },
+  "tower_inside": {
+    "id": "tower_inside",
+    "text": "Inside the tower, a mechanical owl perches on a pedestal. Its bronze eyes flicker. 'Three riddles or face oblivion,' it intones. You have no choice.",
+    "choices": [
+      { "label": "Accept the riddling challenge", "next": "riddle_1" },
+      { "label": "Smash the mechanical owl and run", "next": "tower_escape" }
+    ]
+  },
+  "tower_back": {
+    "id": "tower_back",
+    "text": "Sneaking around the tower, you discover a hidden cellar door. Below: rows of dusty books and a glowing map of the forest.",
+    "choices": [
+      { "label": "Study the glowing map", "next": "hidden_cave" },
+      { "label": "Take a book at random and read it", "next": "book_ending" }
+    ]
+  },
+  "ruins": {
+    "id": "ruins",
+    "text": "The ruins are an ancient library, submerged to knee-height. Waterproof scroll cases line the shelves. One glows faintly.",
+    "choices": [
+      { "label": "Open the glowing scroll", "next": "scroll_power" },
+      { "label": "Search for a way deeper inside", "next": "hidden_cave" },
+      { "label": "Head back to the stream", "next": "stream" }
+    ]
+  },
+  "waterfall": {
+    "id": "waterfall",
+    "text": "Behind the waterfall is a cave opening. Inside: a dragon — small, iridescent, clearly asleep. A pile of treasure glitters nearby.",
+    "choices": [
+      { "label": "Carefully take some treasure and leave", "next": "treasure_ending" },
+      { "label": "Try to befriend the dragon", "next": "dragon_friend" },
+      { "label": "Back away slowly", "next": "stream" }
+    ]
+  },
+  "hidden_cave": {
+    "id": "hidden_cave",
+    "text": "The cave is enormous and filled with star-maps carved into the walls. At the centre: a portal shimmering with blue light. A figure emerges — you, from another timeline.",
+    "choices": [
+      { "label": "Step through the portal", "next": "portal_ending" },
+      { "label": "Talk to the other you", "next": "paradox_choice" }
+    ]
+  },
+  "mushroom_vision": {
+    "id": "mushroom_vision",
+    "text": "The mushrooms grant you a vision: you see the exact centre of the forest, where a locked chest sits under an ancient oak. You snap back to reality with the coordinates burned in your mind.",
+    "choices": [
+      { "label": "Head to the oak tree", "next": "oak_chest" },
+      { "label": "Dismiss the vision as a hallucination", "next": "start" }
+    ]
+  },
+  "riddle_1": {
+    "id": "riddle_1",
+    "text": "'First riddle,' the owl says: 'I have cities but no houses, mountains but no trees, water but no fish — what am I?' You think: a map.",
+    "choices": [
+      { "label": "Answer: A map", "next": "riddle_2" },
+      { "label": "Answer: A painting", "next": "tower_escape" }
+    ]
+  },
+  "riddle_2": {
+    "id": "riddle_2",
+    "text": "The owl nods. 'Second riddle: The more you take, the more you leave behind — what am I?'",
+    "choices": [
+      { "label": "Answer: Footsteps", "next": "riddle_3" },
+      { "label": "Answer: Time", "next": "tower_escape" }
+    ]
+  },
+  "riddle_3": {
+    "id": "riddle_3",
+    "text": "Two correct! The owl gleams. 'Final riddle: I speak without a mouth and hear without ears. I have no body but come alive with wind — what am I?'",
+    "choices": [
+      { "label": "Answer: An echo", "next": "sage_ending" },
+      { "label": "Answer: A ghost", "next": "tower_escape" }
+    ]
+  },
+  "tower_escape": {
+    "id": "tower_escape",
+    "text": "The owl's eyes flash red! You bolt for the door — but trip on a loose stone and tumble into a portal that materialises at your feet. You land in the clearing, the tower now dust. The forest is saved from the mechanical guardian, and you from it.",
+    "choices": [
+      { "label": "Explore the clearing again", "next": "start" }
+    ],
+    "ending": true,
+    "ending_title": "🏃 The Lucky Escape"
+  },
+  "scroll_power": {
+    "id": "scroll_power",
+    "text": "The scroll grants you the ability to understand any language — including the language of trees. The forest speaks to you, sharing centuries of secrets. You become its guardian.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "🌿 Guardian of the Forest"
+  },
+  "treasure_ending": {
+    "id": "treasure_ending",
+    "text": "You slip out with a handful of glittering gems. They turn out to be crystallised dragon tears — the rarest substance in the world — and they grant you one wish. You use it wisely.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "💎 The Dragon's Gift"
+  },
+  "dragon_friend": {
+    "id": "dragon_friend",
+    "text": "The dragon stirs! Its eyes open — warm amber, curious, not angry. You share your food. By evening you've formed a bond. You fly out together over the forest canopy as the stars emerge.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "🐉 Rider of the Skies"
+  },
+  "portal_ending": {
+    "id": "portal_ending",
+    "text": "You step through the portal and emerge in a version of your world where the ancient forests never fell. It's a paradise. You decide to stay.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "✨ The Better World"
+  },
+  "paradox_choice": {
+    "id": "paradox_choice",
+    "text": "Your other self says: 'Whatever you do, don't step through that portal — or we'll both be stuck here forever.' They look exhausted. Do you trust them?",
+    "choices": [
+      { "label": "Trust them and find another way out", "next": "scroll_power" },
+      { "label": "Step through anyway", "next": "paradox_ending" }
+    ]
+  },
+  "paradox_ending": {
+    "id": "paradox_ending",
+    "text": "You both step through. The paradox tears the timeline — but instead of destruction, it creates a new pocket universe where both of you exist peacefully, the first citizens of a brand-new world.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "🌌 Two Worlds, One You"
+  },
+  "sage_ending": {
+    "id": "sage_ending",
+    "text": "The owl bows deeply. 'Sage of the forest,' it says, 'the tower is yours.' The mechanical creature becomes your companion. Together you catalog every secret of the ancient woodland.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "🦉 The Forest Sage"
+  },
+  "book_ending": {
+    "id": "book_ending",
+    "text": "The book is a journal — written by you, dated 100 years from now. It describes your life in this forest in extraordinary detail. You realise you were always meant to stay.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "📖 Written in the Stars"
+  },
+  "oak_chest": {
+    "id": "oak_chest",
+    "text": "The ancient oak stands alone in the centre of the forest. The locked chest hums. You reach out — it opens at your touch. Inside is a mirror that shows not your reflection but your deepest truth.",
+    "choices": [
+      { "label": "Look into the mirror", "next": "mirror_ending" },
+      { "label": "Take the chest without looking", "next": "treasure_ending" }
+    ]
+  },
+  "mirror_ending": {
+    "id": "mirror_ending",
+    "text": "The mirror shows you exactly who you are — and who you could become. You emerge from the forest changed, carrying the image in your heart. Every step forward feels purposeful.",
+    "choices": [],
+    "ending": true,
+    "ending_title": "🪞 The Truest Self"
+  }
+}

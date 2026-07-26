@@ -1,0 +1,83 @@
+{
+  "Science": [
+    {
+      "q": "What is the chemical symbol for gold?",
+      "options": ["Au", "Ag", "Fe", "Gd"],
+      "answer": 0
+    },
+    {
+      "q": "How many bones are in an adult human body?",
+      "options": ["206", "212", "198", "221"],
+      "answer": 0
+    },
+    {
+      "q": "What planet is closest to the Sun?",
+      "options": ["Mercury", "Venus", "Earth", "Mars"],
+      "answer": 0
+    },
+    {
+      "q": "What gas do plants absorb from the atmosphere?",
+      "options": ["Carbon dioxide", "Oxygen", "Nitrogen", "Hydrogen"],
+      "answer": 0
+    },
+    {
+      "q": "What is the speed of light in a vacuum (approx)?",
+      "options": ["300,000 km/s", "150,000 km/s", "3,000 km/s", "30,000 km/s"],
+      "answer": 0
+    }
+  ],
+  "History": [
+    {
+      "q": "In what year did World War II end?",
+      "options": ["1945", "1943", "1947", "1950"],
+      "answer": 0
+    },
+    {
+      "q": "Who was the first person to walk on the Moon?",
+      "options": ["Neil Armstrong", "Buzz Aldrin", "Yuri Gagarin", "John Glenn"],
+      "answer": 0
+    },
+    {
+      "q": "The Great Wall of China was primarily built during which dynasty?",
+      "options": ["Ming", "Han", "Tang", "Qin"],
+      "answer": 0
+    },
+    {
+      "q": "Which ancient wonder was located in Alexandria, Egypt?",
+      "options": ["The Lighthouse", "Colossus of Rhodes", "Hanging Gardens", "Statue of Zeus"],
+      "answer": 0
+    },
+    {
+      "q": "In what year did the Berlin Wall fall?",
+      "options": ["1989", "1991", "1985", "1993"],
+      "answer": 0
+    }
+  ],
+  "Tech": [
+    {
+      "q": "What does 'HTML' stand for?",
+      "options": ["HyperText Markup Language", "High Transfer Markup Language", "HyperText Machine Learning", "High-level Text Markup Language"],
+      "answer": 0
+    },
+    {
+      "q": "Which company created the Python programming language?",
+      "options": ["No company — Guido van Rossum created it", "Google", "Microsoft", "IBM"],
+      "answer": 0
+    },
+    {
+      "q": "What does 'CPU' stand for?",
+      "options": ["Central Processing Unit", "Core Processing Unit", "Control Program Unit", "Central Power Unit"],
+      "answer": 0
+    },
+    {
+      "q": "Which programming language is known as the 'language of the web'?",
+      "options": ["JavaScript", "Python", "Java", "C++"],
+      "answer": 0
+    },
+    {
+      "q": "What does 'API' stand for?",
+      "options": ["Application Programming Interface", "Advanced Program Integration", "Automated Process Interface", "Application Process Interface"],
+      "answer": 0
+    }
+  ]
+}
