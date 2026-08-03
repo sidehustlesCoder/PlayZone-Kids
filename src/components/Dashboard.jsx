@@ -81,7 +81,7 @@ function Dashboard({ apps, progress }) {
 
         <Mascot />
 
-        <h1 className="kids-hero__title">Welcome to GameZoneKids.com! 🎮</h1>
+        <h1 className="kids-hero__title">Welcome to kids Game Zone 🎮</h1>
         <p className="kids-hero__subtitle">
           Fun, colorful & free mini-games made especially for kids. Play, learn & collect stars! ⭐
         </p>
