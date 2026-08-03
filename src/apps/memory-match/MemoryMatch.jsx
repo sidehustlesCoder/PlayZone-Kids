@@ -1,33 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { usePyodide } from '../../shared/usePyodide'
-import memorySource from './logic.py?raw'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 const BEST_SCORES_KEY = 'codearcade-memory-best'
-const THEMES = ['animals', 'shapes', 'food']
+const THEMES = ['animals', 'shapes', 'space']
 const DIFFICULTIES = [
   { value: 'easy',   label: '😊 Easy',   sub: '8 cards' },
   { value: 'medium', label: '🤔 Medium', sub: '16 cards' },
   { value: 'hard',   label: '💀 Hard',   sub: '24 cards' },
 ]
 
+const EMOJI_SETS = {
+  animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮'],
+  shapes: ['🔴', '🟩', '🔺', '⭐', '🌀', '🌙', '🔶', '🍩', '🧡', '🟦', '🛑', '🟣'],
+  space: ['🚀', '🛸', '🌌', '🪐', '👽', '☀️', '🌍', '🌠', '🛰️', '☄️', '🔭', '🧑‍🚀']
+}
+
 function loadBest() {
   try { return JSON.parse(localStorage.getItem(BEST_SCORES_KEY)) || {} } catch { return {} }
 }
 
 export default function MemoryMatch() {
-  const { runPython, loading } = usePyodide()
-  const [initialized, setInitialized] = useState(false)
   const [gameState, setGameState] = useState(null)
   const [difficulty, setDifficulty] = useState('easy')
   const [theme, setTheme] = useState('animals')
   const [lockBoard, setLockBoard] = useState(false)
   const [bestScores, setBestScores] = useState(loadBest)
   const [elapsed, setElapsed] = useState(0)
+  const [flippedIds, setFlippedIds] = useState([])
   const timerRef = useRef(null)
-
-  useEffect(() => {
-    runPython(memorySource).then(() => setInitialized(true))
-  }, [runPython])
 
   useEffect(() => {
     if (gameState && !gameState.game_over) {
@@ -38,63 +38,107 @@ export default function MemoryMatch() {
     return () => clearInterval(timerRef.current)
   }, [gameState?.game_over, !!gameState])
 
-  const startGame = useCallback(async (diff = difficulty, th = theme) => {
+  const startGame = useCallback((diff = difficulty, th = theme) => {
     clearInterval(timerRef.current)
     setElapsed(0)
     setLockBoard(false)
-    const code = `
-import json
-mm = MemoryMatch()
-state = mm.new_game({"difficulty": "${diff}", "theme": "${th}"})
-json.dumps(state)
-`
-    const raw = await runPython(code)
-    setGameState(JSON.parse(raw))
-  }, [runPython, difficulty, theme])
+    setFlippedIds([])
 
-  const handleCardClick = useCallback(async (cardId) => {
+    const numCards = diff === 'easy' ? 8 : diff === 'medium' ? 16 : 24
+    const numPairs = numCards / 2
+    
+    // Slice emojis and double them
+    const themeEmojis = EMOJI_SETS[th].slice(0, numPairs)
+    const cardPool = [...themeEmojis, ...themeEmojis]
+      .map((emoji, index) => ({
+        id: index,
+        emoji,
+        flipped: false,
+        matched: false
+      }))
+      .sort(() => Math.random() - 0.5) // Shuffle
+
+    setGameState({
+      cards: cardPool,
+      moves: 0,
+      matches: 0,
+      num_pairs: numPairs,
+      game_over: false
+    })
+  }, [difficulty, theme])
+
+  const handleCardClick = useCallback((cardId) => {
     if (lockBoard || !gameState || gameState.game_over) return
-    const card = gameState.cards[cardId]
-    if (card.matched || card.flipped) return
-    if (gameState.flipped_ids.length >= 2) return
+    
+    const card = gameState.cards.find(c => c.id === cardId)
+    if (card.matched || card.flipped || flippedIds.includes(cardId)) return
+    if (flippedIds.length >= 2) return
 
-    const code = `
-import json
-state = mm.make_move(${cardId})
-json.dumps(state)
-`
-    const raw = await runPython(code)
-    const state = JSON.parse(raw)
-    setGameState(state)
+    playSelectSound()
 
-    // If 2 cards are flipped but not matched, lock and reset after delay
-    if (state.flipped_ids.length === 2) {
-      const a = state.cards[state.flipped_ids[0]]
-      const b = state.cards[state.flipped_ids[1]]
-      if (a.emoji !== b.emoji) {
+    // Flip card
+    const nextCards = gameState.cards.map(c => c.id === cardId ? { ...c, flipped: true } : c)
+    const nextFlipped = [...flippedIds, cardId]
+    setFlippedIds(nextFlipped)
+
+    let updatedGameState = {
+      ...gameState,
+      cards: nextCards,
+      moves: gameState.moves + (nextFlipped.length === 2 ? 1 : 0)
+    }
+
+    if (nextFlipped.length === 2) {
+      const firstCard = nextCards.find(c => c.id === nextFlipped[0])
+      const secondCard = nextCards.find(c => c.id === nextFlipped[1])
+
+      if (firstCard.emoji === secondCard.emoji) {
+        // Matched
+        const finalCards = nextCards.map(c => 
+          c.id === firstCard.id || c.id === secondCard.id ? { ...c, matched: true } : c
+        )
+        const nextMatches = gameState.matches + 1
+        const isOver = nextMatches === gameState.num_pairs
+
+        updatedGameState = {
+          ...updatedGameState,
+          cards: finalCards,
+          matches: nextMatches,
+          game_over: isOver
+        }
+
+        setFlippedIds([])
+
+        if (isOver) {
+          playWinSound()
+          const key = `${difficulty}-${theme}`
+          const cur = bestScores[key]
+          if (!cur || updatedGameState.moves < cur.moves) {
+            const updated = { ...bestScores, [key]: { moves: updatedGameState.moves, time: elapsed } }
+            setBestScores(updated)
+            localStorage.setItem(BEST_SCORES_KEY, JSON.stringify(updated))
+          }
+          window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+        }
+      } else {
+        // No match - reset after timeout
         setLockBoard(true)
-        setTimeout(async () => {
-          const resetCode = `import json; state = mm.reset_flipped(); json.dumps(state)`
-          const raw2 = await runPython(resetCode)
-          setGameState(JSON.parse(raw2))
+        setTimeout(() => {
+          playLoseSound()
+          const finalCards = updatedGameState.cards.map(c => 
+            c.id === firstCard.id || c.id === secondCard.id ? { ...c, flipped: false } : c
+          )
+          setGameState(prev => ({
+            ...prev,
+            cards: finalCards
+          }))
+          setFlippedIds([])
           setLockBoard(false)
-        }, 900)
+        }, 1000)
       }
     }
 
-    // Save best score
-    if (state.game_over) {
-      const key = `${diff}-${th}`
-      const cur = bestScores[key]
-      if (!cur || state.moves < cur.moves) {
-        const updated = { ...bestScores, [key]: { moves: state.moves, time: elapsed } }
-        setBestScores(updated)
-        localStorage.setItem(BEST_SCORES_KEY, JSON.stringify(updated))
-      }
-    }
-  }, [lockBoard, gameState, runPython, elapsed, bestScores, difficulty, theme])
-
-  if (!initialized) return <div className="calculator-app__status">⚡ Initializing Pyodide Python WASM Engine...</div>
+    setGameState(updatedGameState)
+  }, [lockBoard, gameState, flippedIds, elapsed, bestScores, difficulty, theme])
 
   if (!gameState) {
     return (
@@ -116,7 +160,7 @@ json.dumps(state)
           <div className="memory-setup__btns">
             {THEMES.map(t => (
               <button key={t} className={`memory-theme-btn ${theme===t?'active':''}`} onClick={() => setTheme(t)}>
-                {t === 'animals' ? '🐶' : t === 'shapes' ? '⭐' : '🍎'} {t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === 'animals' ? '🐶' : t === 'shapes' ? '⭐' : '🚀'} {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
@@ -128,7 +172,7 @@ json.dumps(state)
     )
   }
 
-  const { cards, moves, matches, num_pairs, game_over, flipped_ids } = gameState
+  const { cards, moves, matches, num_pairs, game_over } = gameState
   const cols = cards.length === 8 ? 4 : cards.length === 16 ? 4 : 6
 
   return (

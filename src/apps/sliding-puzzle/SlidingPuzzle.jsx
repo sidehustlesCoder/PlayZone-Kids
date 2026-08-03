@@ -1,32 +1,54 @@
 import { useState, useEffect, useCallback } from 'react'
-import { usePyodide } from '../../shared/usePyodide'
-import puzzleSource from './logic.py?raw'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 const DIFFICULTIES = [
   { value: 'easy',   label: '😊 Easy (3×3)', size: 3 },
   { value: 'medium', label: '🤔 Medium (4×4)', size: 4 },
 ]
 
+function generatePuzzleData(size) {
+  const total = size * size
+  const tiles = Array.from({ length: total }, (_, i) => (i === total - 1 ? 0 : i + 1))
+  
+  // Shuffle by making valid sliding moves from the goal state
+  let blankIdx = total - 1
+  for (let i = 0; i < 200; i++) {
+    const validMoves = []
+    const blankR = Math.floor(blankIdx / size)
+    const blankC = blankIdx % size
+    
+    if (blankR > 0) validMoves.push(blankIdx - size)
+    if (blankR < size - 1) validMoves.push(blankIdx + size)
+    if (blankC > 0) validMoves.push(blankIdx - 1)
+    if (blankC < size - 1) validMoves.push(blankIdx + 1)
+    
+    const move = validMoves[Math.floor(Math.random() * validMoves.length)]
+    tiles[blankIdx] = tiles[move]
+    tiles[move] = 0
+    blankIdx = move
+  }
+  
+  return {
+    tiles,
+    n: size,
+    blank_idx: blankIdx,
+    moves: 0,
+    complete: false
+  }
+}
+
+function checkSolved(tiles) {
+  for (let i = 0; i < tiles.length - 1; i++) {
+    if (tiles[i] !== i + 1) return false
+  }
+  return tiles[tiles.length - 1] === 0
+}
+
 export default function SlidingPuzzle() {
-  const { runPython, loading } = usePyodide()
-  const [initialized, setInitialized] = useState(false)
   const [gameState, setGameState] = useState(null)
   const [difficulty, setDifficulty] = useState('easy')
   const [elapsed, setElapsed] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
-
-  // Initialize Python logic on mount
-  useEffect(() => {
-    async function init() {
-      try {
-        await runPython(puzzleSource)
-        setInitialized(true)
-      } catch (err) {
-        console.error('Failed to initialize sliding puzzle logic:', err)
-      }
-    }
-    init()
-  }, [runPython])
 
   // Timer effect
   useEffect(() => {
@@ -41,47 +63,50 @@ export default function SlidingPuzzle() {
     return () => clearInterval(interval)
   }, [timerActive])
 
-  const startGame = useCallback(async (diff = difficulty) => {
+  const startGame = useCallback((diff = difficulty) => {
     setElapsed(0)
     setTimerActive(false)
-    try {
-      const code = `
-import json
-puzzle = SlidingPuzzle()
-state = puzzle.generate({"difficulty": "${diff}"})
-json.dumps(state)
-`
-      const result = await runPython(code)
-      setGameState(JSON.parse(result))
-      setTimerActive(true)
-    } catch (e) {
-      console.error(e)
-    }
-  }, [runPython, difficulty])
+    const size = diff === 'easy' ? 3 : 4
+    setGameState(generatePuzzleData(size))
+    setTimerActive(true)
+  }, [difficulty])
 
-  const handleTileClick = useCallback(async (tileIdx) => {
+  const handleTileClick = useCallback((tileIdx) => {
     if (!gameState || gameState.complete) return
-    try {
-      const code = `
-import json
-state = puzzle.move_tile(${tileIdx})
-json.dumps(state)
-`
-      const result = await runPython(code)
-      const state = JSON.parse(result)
-      setGameState(state)
-
-      if (state.complete) {
+    const { tiles, n, blank_idx, moves } = gameState
+    
+    const clickR = Math.floor(tileIdx / n)
+    const clickC = tileIdx % n
+    const blankR = Math.floor(blank_idx / n)
+    const blankC = blank_idx % n
+    
+    const dist = Math.abs(clickR - blankR) + Math.abs(clickC - blankC)
+    
+    if (dist === 1) {
+      playSelectSound()
+      const nextTiles = [...tiles]
+      nextTiles[blank_idx] = tiles[tileIdx]
+      nextTiles[tileIdx] = 0
+      
+      const isSolved = checkSolved(nextTiles)
+      
+      setGameState(prev => ({
+        ...prev,
+        tiles: nextTiles,
+        blank_idx: tileIdx,
+        moves: moves + 1,
+        complete: isSolved
+      }))
+      
+      if (isSolved) {
         setTimerActive(false)
+        playWinSound()
+        window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
       }
-    } catch (e) {
-      console.error(e)
+    } else {
+      playLoseSound()
     }
-  }, [runPython, gameState])
-
-  if (!initialized) {
-    return <div className="calculator-app__status">⚡ Initializing Pyodide Python WASM Engine...</div>
-  }
+  }, [gameState])
 
   if (!gameState) {
     return (
@@ -103,7 +128,7 @@ json.dumps(state)
     )
   }
 
-  const { tiles, n, blank_idx, moves, complete } = gameState
+  const { tiles, n, complete, moves } = gameState
 
   return (
     <div className="sliding-puzzle-app">
@@ -127,10 +152,15 @@ json.dumps(state)
       <div 
         className="sliding-grid" 
         style={{ 
+          display: 'grid',
           gridTemplateColumns: `repeat(${n}, 1fr)`,
           gridTemplateRows: `repeat(${n}, 1fr)`,
           maxWidth: `${n * 80}px`,
           margin: '0 auto',
+          gap: '5px',
+          background: 'rgba(255,255,255,0.05)',
+          padding: '10px',
+          borderRadius: '16px'
         }}
       >
         {tiles.map((val, idx) => {
@@ -144,6 +174,15 @@ json.dumps(state)
                 width: '70px',
                 height: '70px',
                 fontSize: '1.5rem',
+                border: 'none',
+                borderRadius: '8px',
+                background: isBlank ? 'transparent' : 'var(--primary-color)',
+                color: '#fff',
+                cursor: isBlank ? 'default' : 'pointer',
+                boxShadow: isBlank ? 'none' : '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
               onClick={() => handleTileClick(idx)}
               disabled={isBlank || complete}

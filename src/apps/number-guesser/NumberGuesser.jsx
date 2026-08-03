@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { usePyodide } from '../../shared/usePyodide'
 import numberGuesserSource from './logic.py?raw'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 function NumberGuesser() {
   const { runPython, loading, error: pyodideError } = usePyodide()
   const [isPythonInitialized, setIsPythonInitialized] = useState(false)
-  const [gameState, setGameState] = useState(null) // State dictionary returned from python
+  const [gameState, setGameState] = useState(null)
   const [currentGuess, setCurrentGuess] = useState('')
   const [error, setError] = useState('')
 
@@ -41,7 +42,7 @@ function NumberGuesser() {
         setIsPythonInitialized(true)
       } catch (err) {
         console.error('Failed to initialize number guesser logic:', err)
-        setError('Failed to initialize Python runtime')
+        setError('Oops! Something went wrong starting the game.')
       }
     }
     init()
@@ -50,7 +51,7 @@ function NumberGuesser() {
   const handleStartGame = async () => {
     setError('')
     if (Number(minVal) >= Number(maxVal)) {
-      setError('Minimum value must be less than maximum value.')
+      setError('Hmm, the minimum number needs to be smaller than the maximum! 🤔')
       return
     }
     try {
@@ -74,16 +75,17 @@ json.dumps(state)
     e.preventDefault()
     setError('')
     if (!currentGuess || isNaN(currentGuess)) {
-      setError('Please enter a valid number.')
+      setError('Please enter a valid number! 🔢')
       return
     }
 
     const val = Number(currentGuess)
     if (val < gameState.min || val > gameState.max) {
-      setError(`Please enter a number between ${gameState.min} and ${gameState.max}.`)
+      setError(`Try a number between ${gameState.min} and ${gameState.max}! 😊`)
       return
     }
 
+    playSelectSound()
     try {
       const pyCode = `
 import json
@@ -95,34 +97,47 @@ json.dumps(state)
       setGameState(state)
       setCurrentGuess('')
 
-      // If game is over and player won, update high score
+      // Feedback sounds & star reward
       if (state.game_over && state.won) {
+        playWinSound()
+        window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
         const attemptsUsed = state.attempts
         const prevBest = highScores[difficulty]
         if (!prevBest || attemptsUsed < prevBest) {
-          const updatedScores = {
-            ...highScores,
-            [difficulty]: attemptsUsed,
-          }
+          const updatedScores = { ...highScores, [difficulty]: attemptsUsed }
           setHighScores(updatedScores)
           localStorage.setItem('codearcade-guesser-highs', JSON.stringify(updatedScores))
         }
+      } else if (state.game_over && !state.won) {
+        playLoseSound()
+      } else if (state.guesses?.length > 0) {
+        const lastHint = state.guesses[state.guesses.length - 1]?.hint
+        if (lastHint === 'higher' || lastHint === 'lower') playLoseSound()
       }
     } catch (err) {
       setError(err.message || 'Error processing guess')
     }
   }
 
+  const hintMap = {
+    correct: '🎯 You got it!',
+    higher: '🔺 Go higher! Try a bigger number!',
+    lower: '🔻 Go lower! Try a smaller number!'
+  }
+
   return (
     <div className="number-guesser-app">
       {!isPythonInitialized ? (
-        <div className="calculator-app__status">
-          ⚡ Initializing Pyodide Python WASM Engine...
+        <div className="calculator-app__status" style={{ textAlign: 'center', padding: '40px', fontSize: '1.2rem' }}>
+          ⚡ Getting the game ready for you...
         </div>
       ) : !gameState ? (
         /* Configuration Screen */
         <div className="guesser-config">
-          <h2 className="guesser-config__title">Game Configuration</h2>
+          <h2 className="guesser-config__title">🎯 Number Guessing!</h2>
+          <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-muted)' }}>
+            I'm thinking of a secret number... can YOU guess it? 🤫
+          </p>
           {error && <div className="guesser-config__error" role="alert">{error}</div>}
 
           <div className="guesser-config__form">
@@ -148,7 +163,7 @@ json.dumps(state)
             </div>
 
             <div className="guesser-config__field">
-              <label>Difficulty</label>
+              <label>Pick your challenge:</label>
               <div className="guesser-config__difficulty" role="radiogroup" aria-label="Difficulty Selection">
                 {['easy', 'medium', 'hard'].map((diff) => (
                   <button
@@ -157,7 +172,7 @@ json.dumps(state)
                     onClick={() => setDifficulty(diff)}
                     className={`guesser-config__diff-btn guesser-config__diff-btn--${diff} ${difficulty === diff ? 'active' : ''}`}
                   >
-                    {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                    {diff === 'easy' ? '😊' : diff === 'medium' ? '🤔' : '🔥'} {diff.charAt(0).toUpperCase() + diff.slice(1)}
                     <span className="attempts-badge">
                       {diff === 'easy' ? '15 tries' : diff === 'medium' ? '10 tries' : '5 tries'}
                     </span>
@@ -168,11 +183,11 @@ json.dumps(state)
 
             {/* Best Scores Display */}
             <div className="guesser-config__best-scores">
-              <h3>🏆 Personal Best Scores (Attempts used)</h3>
+              <h3>🏆 Your Best Scores (fewer guesses = better!)</h3>
               <div className="scores-grid">
-                <div>Easy: <strong>{highScores.easy || '—'}</strong></div>
-                <div>Medium: <strong>{highScores.medium || '—'}</strong></div>
-                <div>Hard: <strong>{highScores.hard || '—'}</strong></div>
+                <div>😊 Easy: <strong>{highScores.easy || '—'}</strong></div>
+                <div>🤔 Medium: <strong>{highScores.medium || '—'}</strong></div>
+                <div>🔥 Hard: <strong>{highScores.hard || '—'}</strong></div>
               </div>
             </div>
 
@@ -181,7 +196,7 @@ json.dumps(state)
               disabled={loading}
               className="guesser-config__start-btn"
             >
-              Start Playing
+              🎮 Start Guessing!
             </button>
           </div>
         </div>
@@ -190,14 +205,14 @@ json.dumps(state)
         <div className="guesser-play">
           <div className="guesser-play__header">
             <div>
-              <h3>Range: {gameState.min} - {gameState.max}</h3>
-              <p>Attempts: <strong>{gameState.attempts}</strong> of <strong>{gameState.max_attempts}</strong></p>
+              <h3>🔢 Guess between {gameState.min} and {gameState.max}</h3>
+              <p>Guesses: <strong>{gameState.attempts}</strong> of <strong>{gameState.max_attempts}</strong></p>
             </div>
             <button
               onClick={() => setGameState(null)}
               className="guesser-play__reset-btn"
             >
-              ⚙️ Change settings
+              ⚙️ Settings
             </button>
           </div>
 
@@ -218,13 +233,13 @@ json.dumps(state)
                 type="number"
                 value={currentGuess}
                 onChange={(e) => setCurrentGuess(e.target.value)}
-                placeholder="Enter your guess"
+                placeholder="Type your guess here!"
                 aria-label="Your guess"
                 disabled={loading}
                 autoFocus
               />
               <button type="submit" disabled={loading}>
-                Guess
+                🎯 Guess!
               </button>
             </form>
           ) : (
@@ -232,19 +247,19 @@ json.dumps(state)
             <div className="guesser-play__gameover">
               {gameState.won ? (
                 <div className="won-banner">
-                  🎉 You won in <strong>{gameState.attempts}</strong> attempts!
+                  🎉 You found it in <strong>{gameState.attempts}</strong> guess{gameState.attempts !== 1 ? 'es' : ''}! Way to go!
                   {highScores[difficulty] === gameState.attempts && <span> 🏆 New Personal Best!</span>}
                 </div>
               ) : (
                 <div className="lost-banner">
-                  💀 Game Over! You used all attempts.
+                  😢 Aww! You ran out of guesses. You were SO close! Try again! 💪
                 </div>
               )}
               <button
                 onClick={handleStartGame}
                 className="guesser-play__replay-btn"
               >
-                Play Again
+                🔄 Play Again!
               </button>
             </div>
           )}
@@ -252,7 +267,7 @@ json.dumps(state)
           {/* Guess history list */}
           {gameState.guesses.length > 0 && (
             <div className="guesser-play__history">
-              <h4>Guess History</h4>
+              <h4>Your guesses:</h4>
               <div className="history-list">
                 {[...gameState.guesses].reverse().map((g, index) => (
                   <div
@@ -261,7 +276,7 @@ json.dumps(state)
                   >
                     <span className="guess-val">{g.guess}</span>
                     <span className="guess-hint">
-                      {g.hint === 'correct' ? '🎯 Correct!' : g.hint === 'higher' ? '👆 Higher' : '👇 Lower'}
+                      {hintMap[g.hint] || g.hint}
                     </span>
                   </div>
                 ))}

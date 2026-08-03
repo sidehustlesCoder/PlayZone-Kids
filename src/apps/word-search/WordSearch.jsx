@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { usePyodide } from '../../shared/usePyodide'
-import wsSource from './logic.py?raw'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
+import wordLists from './word-lists.json'
 
 const THEMES = [
   { value: 'animals',   label: '🐾 Animals',   color: '#2ED573' },
@@ -9,49 +9,128 @@ const THEMES = [
 ]
 
 export default function WordSearch() {
-  const { runPython } = usePyodide()
-  const [initialized, setInitialized] = useState(false)
   const [puzzle, setPuzzle] = useState(null)
   const [theme, setTheme] = useState('animals')
-  const [selection, setSelection] = useState([])   // cells being dragged over
+  const [selection, setSelection] = useState([])   // cells being dragged over: [[r, c], ...]
   const [isDragging, setIsDragging] = useState(false)
-  const [foundPositions, setFoundPositions] = useState({})   // word -> cells
+  const [foundPositions, setFoundPositions] = useState({})   // word -> [[r,c], ...]
   const [message, setMessage] = useState('')
   const startCell = useRef(null)
 
-  useEffect(() => {
-    runPython(wsSource).then(() => setInitialized(true))
-  }, [runPython])
-
-  const generatePuzzle = useCallback(async (th = theme) => {
+  const generatePuzzle = useCallback((th = theme) => {
     setSelection([])
     setFoundPositions({})
     setMessage('')
-    const raw = await runPython(`
-import json
-ws = WordSearch()
-state = ws.generate({"theme": "${th}"})
-json.dumps(state)
-`)
-    setPuzzle(JSON.parse(raw))
-  }, [runPython, theme])
+
+    const gridSize = 8
+    const themeWords = wordLists[th] || []
+    
+    // Pick 5 random words from the theme
+    const selectedWords = [...themeWords]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 5)
+      .map(w => w.toUpperCase())
+
+    // Initialize empty grid
+    const grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''))
+    const wordPlacements = {} // word -> array of [r, c]
+
+    const directions = [
+      [0, 1],   // Horizontal
+      [1, 0],   // Vertical
+      [1, 1],   // Diagonal Down-Right
+      [-1, 1],  // Diagonal Up-Right
+    ]
+
+    selectedWords.forEach(word => {
+      let placed = false
+      let attempts = 0
+      
+      while (!placed && attempts < 100) {
+        attempts++
+        const dir = directions[Math.floor(Math.random() * directions.length)]
+        const isReverse = Math.random() > 0.5
+        const displayWord = isReverse ? word.split('').reverse().join('') : word
+        
+        // Pick random start position
+        const startR = Math.floor(Math.random() * gridSize)
+        const startC = Math.floor(Math.random() * gridSize)
+        
+        // Check boundary
+        const endR = startR + dir[0] * (word.length - 1)
+        const endC = startC + dir[1] * (word.length - 1)
+        
+        if (endR >= 0 && endR < gridSize && endC >= 0 && endC < gridSize) {
+          // Check collision
+          let ok = true
+          const cells = []
+          for (let i = 0; i < word.length; i++) {
+            const r = startR + dir[0] * i
+            const c = startC + dir[1] * i
+            const letter = displayWord[i]
+            if (grid[r][c] !== '' && grid[r][c] !== letter) {
+              ok = false
+              break
+            }
+            cells.push([r, c])
+          }
+          
+          if (ok) {
+            cells.forEach(([r, c], i) => {
+              grid[r][c] = displayWord[i]
+            })
+            // If it was reversed, store the positions in correct word order
+            wordPlacements[word] = isReverse ? [...cells].reverse() : cells
+            placed = true
+          }
+        }
+      }
+    })
+
+    // Fill remaining cells with random letters
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (grid[r][c] === '') {
+          grid[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)]
+        }
+      }
+    }
+
+    setPuzzle({
+      grid,
+      grid_size: gridSize,
+      words: selectedWords,
+      found_words: [],
+      complete: false,
+      placements: wordPlacements
+    })
+  }, [theme])
+
+  useEffect(() => {
+    generatePuzzle()
+  }, [])
 
   const getCellKey = (r, c) => `${r}-${c}`
 
   const handleMouseDown = (r, c) => {
+    if (puzzle?.complete) return
     setIsDragging(true)
     startCell.current = [r, c]
     setSelection([[r, c]])
+    playSelectSound()
   }
 
   const handleMouseEnter = (r, c) => {
-    if (!isDragging || !startCell.current) return
-    // Build a straight line from startCell to current cell
+    if (!isDragging || !startCell.current || puzzle?.complete) return
     const [sr, sc] = startCell.current
-    const dr = Math.sign(r - sr), dc = Math.sign(c - sc)
+    const dr = Math.sign(r - sr)
+    const dc = Math.sign(c - sc)
     if (dr === 0 && dc === 0) return
+    
     // Only allow straight lines (horizontal, vertical, diagonal)
     if (dr !== 0 && dc !== 0 && Math.abs(r - sr) !== Math.abs(c - sc)) return
+    
     const cells = []
     let cr = sr, cc = sc
     while (cr !== r || cc !== c) {
@@ -62,59 +141,70 @@ json.dumps(state)
     setSelection(cells)
   }
 
-  const handleMouseUp = useCallback(async () => {
-    if (!isDragging || selection.length < 2) { setIsDragging(false); setSelection([]); return }
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging || !puzzle) return
     setIsDragging(false)
-    const cellsJson = JSON.stringify(selection)
-    const raw = await runPython(`
-import json
-state = ws.check_word(${cellsJson})
-json.dumps(state)
-`)
-    const state = JSON.parse(raw)
-    setPuzzle(state)
 
-    // Get word positions to highlight found words
-    if (state.found_words.length > (puzzle?.found_words?.length || 0)) {
-      const posRaw = await runPython(`import json; json.dumps(ws.get_word_positions())`)
-      const positions = JSON.parse(posRaw)
-      // Only keep found words' positions
-      const newFP = {}
-      for (const w of state.found_words) { newFP[w] = positions[w] || [] }
-      setFoundPositions(newFP)
-      setMessage('✓ Found one!')
-      setTimeout(() => setMessage(''), 1500)
+    if (selection.length >= 2) {
+      // Convert selection to uppercase word string from grid letters
+      const selectedWord = selection.map(([r, c]) => puzzle.grid[r][c]).join('')
+      const reversedWord = selectedWord.split('').reverse().join('')
+      
+      let matchedWord = null
+      let matchedCells = []
+
+      // Check if matches any word in placements
+      for (const [word, cells] of Object.entries(puzzle.placements)) {
+        if (puzzle.found_words.includes(word)) continue
+        
+        const cellKeys = cells.map(([r, c]) => getCellKey(r, c)).join(',')
+        const selKeys = selection.map(([r, c]) => getCellKey(r, c)).join(',')
+        const revSelKeys = [...selection].reverse().map(([r, c]) => getCellKey(r, c)).join(',')
+
+        if (selKeys === cellKeys || revSelKeys === cellKeys) {
+          matchedWord = word
+          matchedCells = cells
+          break
+        }
+      }
+
+      if (matchedWord) {
+        // Success
+        playWinSound()
+        const nextFoundWords = [...puzzle.found_words, matchedWord]
+        const isComplete = nextFoundWords.length === puzzle.words.length
+        
+        setFoundPositions(prev => ({
+          ...prev,
+          [matchedWord]: matchedCells
+        }))
+
+        setPuzzle(prev => ({
+          ...prev,
+          found_words: nextFoundWords,
+          complete: isComplete
+        }))
+
+        setMessage('✓ Found one! 🎉')
+        setTimeout(() => setMessage(''), 1500)
+
+        if (isComplete) {
+          window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+        }
+      } else {
+        playLoseSound()
+      }
     }
+
     setSelection([])
-  }, [isDragging, selection, runPython, puzzle])
+  }, [isDragging, selection, puzzle])
 
-  if (!initialized) return <div className="calculator-app__status">⚡ Initializing Pyodide Python WASM Engine...</div>
-
-  if (!puzzle) {
-    return (
-      <div className="ws-setup">
-        <h2 className="ttt-setup__title">🔤 Word Search</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Find all hidden words! Click and drag to select.</p>
-        <div className="ttt-setup__group">
-          <label>Theme</label>
-          <div className="ttt-setup__btns">
-            {THEMES.map(t => (
-              <button key={t.value} className={`ttt-option-btn ${theme===t.value?'active':''}`} onClick={() => setTheme(t.value)}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button className="ttt-start-btn" onClick={() => generatePuzzle(theme)} style={{ marginTop: '1.5rem' }}>Generate Puzzle</button>
-      </div>
-    )
-  }
+  if (!puzzle) return null
 
   const { grid, grid_size, words, found_words, complete } = puzzle
-  const themeColor = THEMES.find(t => t.value === theme)?.color || 'var(--primary)'
+  const themeColor = THEMES.find(t => t.value === theme)?.color || 'var(--primary-color)'
   const selSet = new Set(selection.map(([r,c]) => getCellKey(r,c)))
 
-  // Build a map of all found cell positions
   const foundCellSet = new Set()
   for (const cells of Object.values(foundPositions)) {
     for (const [r,c] of cells) foundCellSet.add(getCellKey(r,c))
@@ -146,7 +236,7 @@ json.dumps(state)
 
       <div
         className="ws-grid"
-        onMouseLeave={() => { if (isDragging) { handleMouseUp() } }}
+        onMouseLeave={handleMouseUp}
         style={{ gridTemplateColumns: `repeat(${grid_size}, 1fr)` }}
         onMouseUp={handleMouseUp}
       >

@@ -1,88 +1,152 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { usePyodide } from '../../shared/usePyodide'
-import simonSource from './logic.py?raw'
+import { playWinSound, playLoseSound } from '../../shared/sounds'
 
 const COLOR_CONFIG = {
-  red:    { bg: '#FF4757', label: '🔴', sound: 261 },
-  blue:   { bg: '#1E90FF', label: '🔵', sound: 329 },
-  green:  { bg: '#2ED573', label: '🟢', sound: 392 },
-  yellow: { bg: '#FFD700', label: '🟡', sound: 523 },
+  red:    { bg: '#FF4757', label: '🔴', sound: 261.63 },
+  blue:   { bg: '#1E90FF', label: '🔵', sound: 329.63 },
+  green:  { bg: '#2ED573', label: '🟢', sound: 392.00 },
+  yellow: { bg: '#FFD700', label: '🟡', sound: 523.25 },
 }
 const COLORS = ['red', 'blue', 'green', 'yellow']
 const BEST_KEY = 'codearcade-simon-best'
 
+function playColorSound(freq) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(freq, ctx.currentTime)
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.3)
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 export default function SimonSays() {
-  const { runPython, loading } = usePyodide()
-  const [initialized, setInitialized] = useState(false)
-  const [gameState, setGameState] = useState(null)
-  const [activeColor, setActiveColor] = useState(null) // flashing color during watch phase
-  const [phase, setPhase] = useState('idle') // 'idle'|'watching'|'input'|'gameover'
-  const [best, setBest] = useState(() => { try { return parseInt(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 } })
+  const [activeColor, setActiveColor] = useState(null)
+  const [phase, setPhase] = useState('idle') // 'idle' | 'watching' | 'input' | 'gameover'
+  const [best, setBest] = useState(() => {
+    try { return parseInt(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 }
+  })
+  
+  const [gameState, setGameState] = useState({
+    sequence: [],
+    player_input: [],
+    round: 0,
+    longest_streak: 0,
+    game_over: false
+  })
+
   const seqRef = useRef([])
+  const inputIndexRef = useRef(0)
 
-  useEffect(() => {
-    runPython(simonSource).then(() => setInitialized(true))
-  }, [runPython])
+  // Speeds up per round: baseline 500ms, decreases by 40ms each round, min 180ms
+  const getSpeed = (round) => {
+    return Math.max(180, 500 - (round * 40))
+  }
 
-  const playSequence = useCallback(async (sequence) => {
+  const playSequence = useCallback(async (sequence, round) => {
     setPhase('watching')
+    const speed = getSpeed(round)
+    
     for (let i = 0; i < sequence.length; i++) {
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, speed * 0.7))
       setActiveColor(sequence[i])
-      await new Promise(r => setTimeout(r, 600))
+      playColorSound(COLOR_CONFIG[sequence[i]].sound)
+      await new Promise(r => setTimeout(r, speed))
       setActiveColor(null)
     }
+    
     await new Promise(r => setTimeout(r, 300))
-    // Switch to input phase
-    const raw = await runPython(`import json; state = simon.start_input_phase(); json.dumps(state)`)
-    const state = JSON.parse(raw)
-    setGameState(state)
     setPhase('input')
-  }, [runPython])
+    inputIndexRef.current = 0
+    setGameState(prev => ({ ...prev, player_input: [] }))
+  }, [])
 
-  const startGame = useCallback(async () => {
-    const raw = await runPython(`
-import json
-simon = SimonSays()
-state = simon.new_game()
-json.dumps(state)
-`)
-    const state = JSON.parse(raw)
-    seqRef.current = state.sequence
-    setGameState(state)
-    playSequence(state.sequence)
-  }, [runPython, playSequence])
+  const startGame = useCallback(() => {
+    const startSeq = [COLORS[Math.floor(Math.random() * COLORS.length)]]
+    seqRef.current = startSeq
+    
+    const startState = {
+      sequence: startSeq,
+      player_input: [],
+      round: 1,
+      longest_streak: 0,
+      game_over: false
+    }
+    
+    setGameState(startState)
+    playSequence(startSeq, 1)
+  }, [playSequence])
 
   const handleColorPress = useCallback(async (color) => {
-    if (phase !== 'input' || !gameState) return
+    if (phase !== 'input' || gameState.game_over) return
+
     setActiveColor(color)
-    setTimeout(() => setActiveColor(null), 200)
+    playColorSound(COLOR_CONFIG[color].sound)
+    setTimeout(() => setActiveColor(null), 180)
 
-    const raw = await runPython(`import json; state = simon.make_move("${color}"); json.dumps(state)`)
-    const state = JSON.parse(raw)
-    setGameState(state)
+    const expectedColor = seqRef.current[inputIndexRef.current]
+    const nextPlayerInput = [...gameState.player_input, color]
+    
+    setGameState(prev => ({ ...prev, player_input: nextPlayerInput }))
 
-    if (state.game_over) {
-      setPhase('gameover')
-      if (state.longest_streak > best) {
-        setBest(state.longest_streak)
-        localStorage.setItem(BEST_KEY, state.longest_streak)
+    if (color === expectedColor) {
+      // Correct input
+      inputIndexRef.current += 1
+      
+      if (inputIndexRef.current === seqRef.current.length) {
+        // Round cleared! Add a new color to sequence
+        const nextSeq = [...seqRef.current, COLORS[Math.floor(Math.random() * COLORS.length)]]
+        seqRef.current = nextSeq
+        
+        const nextRound = gameState.round + 1
+        const currentStreak = gameState.round // Streak is number of colors correctly repeated
+        const nextStreak = Math.max(gameState.longest_streak, currentStreak)
+        
+        setGameState(prev => ({
+          ...prev,
+          round: nextRound,
+          longest_streak: nextStreak
+        }))
+
+        // Play win sound for round milestone (every 3 rounds) or standard select
+        if (nextRound > 1 && (nextRound - 1) % 3 === 0) {
+          playWinSound()
+          // Dispatched star reward for progress milestone!
+          window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+        }
+
+        await new Promise(r => setTimeout(r, 600))
+        playSequence(nextSeq, nextRound)
       }
-    } else if (state.sequence.length > seqRef.current.length) {
-      // New step added — play the extended sequence
-      seqRef.current = state.sequence
-      await new Promise(r => setTimeout(r, 500))
-      playSequence(state.sequence)
-    }
-  }, [phase, gameState, runPython, playSequence, best])
+    } else {
+      // Wrong input - Game Over
+      playLoseSound()
+      const finalStreak = gameState.round - 1
+      const isNewBest = finalStreak > best
+      
+      setGameState(prev => ({ ...prev, game_over: true, longest_streak: finalStreak }))
+      setPhase('gameover')
 
-  if (!initialized) return <div className="calculator-app__status">⚡ Initializing Pyodide Python WASM Engine...</div>
+      if (isNewBest) {
+        setBest(finalStreak)
+        localStorage.setItem(BEST_KEY, finalStreak.toString())
+      }
+    }
+  }, [phase, gameState, best, playSequence])
 
   if (!gameState || phase === 'idle') {
     return (
       <div className="simon-setup">
         <h2 className="simon-setup__title">🎵 Simon Says</h2>
-        <p className="simon-setup__desc">Watch the flashing colors, then repeat the sequence! The sequence gets longer each round.</p>
+        <p className="simon-setup__desc">Watch the flashing colors, then repeat the sequence! The sequence gets longer and faster each round.</p>
         <div className="simon-preview">
           {COLORS.map(c => (
             <div key={c} className="simon-preview-dot" style={{ background: COLOR_CONFIG[c].bg }} />
@@ -99,7 +163,7 @@ json.dumps(state)
       <div className="simon-gameover">
         <div className="simon-gameover__icon">💫</div>
         <h2>Great try!</h2>
-        <p>You made it to round <strong>{gameState.round - 1}</strong>!</p>
+        <p>You made it to round <strong>{gameState.round}</strong>!</p>
         {gameState.longest_streak >= best && <p className="simon-new-best">🏆 New Personal Best: {gameState.longest_streak}!</p>}
         <div className="hangman-actions">
           <button className="ttt-replay-btn" onClick={startGame}>Play Again</button>

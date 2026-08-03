@@ -1,81 +1,76 @@
 import { useParams, Link, Navigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import SourceCodeViewer from './SourceCodeViewer.jsx'
 import Confetti from './Confetti.jsx'
+import Mascot from './Mascot.jsx'
 import { useKidsProgress } from '../shared/useKidsProgress.js'
 
 // Import App Components
-import Calculator from '../apps/calculator/Calculator.jsx'
 import NumberGuesser from '../apps/number-guesser/NumberGuesser.jsx'
-import PasswordGenerator from '../apps/password-gen/PasswordGenerator.jsx'
 import TicTacToe from '../apps/tic-tac-toe/TicTacToe.jsx'
 import Quiz from '../apps/quiz/Quiz.jsx'
-import TodoApp from '../apps/todo/TodoApp.jsx'
-import UnitConverter from '../apps/unit-converter/UnitConverter.jsx'
 import TextAdventure from '../apps/text-adventure/TextAdventure.jsx'
 import Hangman from '../apps/hangman/Hangman.jsx'
-import WebScraper from '../apps/web-scraper/WebScraper.jsx'
 import MemoryMatch from '../apps/memory-match/MemoryMatch.jsx'
 import SimonSays from '../apps/simon-says/SimonSays.jsx'
 import ConnectFour from '../apps/connect-four/ConnectFour.jsx'
 import MazeRunner from '../apps/maze-runner/MazeRunner.jsx'
 import WordSearch from '../apps/word-search/WordSearch.jsx'
 import SlidingPuzzle from '../apps/sliding-puzzle/SlidingPuzzle.jsx'
+import ShapeSorter from '../apps/shape-sorter/ShapeSorter.jsx'
+import ColorSplash from '../apps/color-splash/ColorSplash.jsx'
+import AnimalSoundMatch from '../apps/animal-sound-match/AnimalSoundMatch.jsx'
+import WhackAMole from '../apps/whack-a-mole/WhackAMole.jsx'
 
-// Import Raw Python Scripts
-import calculatorSource from '../apps/calculator/logic.py?raw'
+// Import Raw Python Scripts (Only for apps still using Python/Pyodide)
 import numberGuesserSource from '../apps/number-guesser/logic.py?raw'
-import passwordGenSource from '../apps/password-gen/logic.py?raw'
 import ticTacToeSource from '../apps/tic-tac-toe/logic.py?raw'
 import quizSource from '../apps/quiz/logic.py?raw'
-import todoSource from '../apps/todo/logic.py?raw'
-import unitConverterSource from '../apps/unit-converter/logic.py?raw'
 import textAdventureSource from '../apps/text-adventure/logic.py?raw'
 import hangmanSource from '../apps/hangman/logic.py?raw'
-import webScraperSource from '../apps/web-scraper/logic.py?raw'
-import memoryMatchSource from '../apps/memory-match/logic.py?raw'
-import simonSaysSource from '../apps/simon-says/logic.py?raw'
-import connectFourSource from '../apps/connect-four/logic.py?raw'
-import mazeRunnerSource from '../apps/maze-runner/logic.py?raw'
-import wordSearchSource from '../apps/word-search/logic.py?raw'
-import slidingPuzzleSource from '../apps/sliding-puzzle/logic.py?raw'
 
 const APP_COMPONENTS = {
-  calculator: Calculator,
-  'number-guesser': NumberGuesser,
-  'password-gen': PasswordGenerator,
-  'tic-tac-toe': TicTacToe,
-  quiz: Quiz,
-  todo: TodoApp,
-  'unit-converter': UnitConverter,
-  'text-adventure': TextAdventure,
-  hangman: Hangman,
-  'web-scraper': WebScraper,
+  'shape-sorter': ShapeSorter,
+  'color-splash': ColorSplash,
+  'animal-sound-match': AnimalSoundMatch,
+  'whack-a-mole': WhackAMole,
   'memory-match': MemoryMatch,
   'simon-says': SimonSays,
   'connect-four': ConnectFour,
   'maze-runner': MazeRunner,
   'word-search': WordSearch,
   'sliding-puzzle': SlidingPuzzle,
+  'number-guesser': NumberGuesser,
+  'tic-tac-toe': TicTacToe,
+  quiz: Quiz,
+  'text-adventure': TextAdventure,
+  hangman: Hangman,
 }
 
 const APP_SOURCES = {
-  calculator: calculatorSource,
   'number-guesser': numberGuesserSource,
-  'password-gen': passwordGenSource,
   'tic-tac-toe': ticTacToeSource,
   quiz: quizSource,
-  todo: todoSource,
-  'unit-converter': unitConverterSource,
   'text-adventure': textAdventureSource,
   hangman: hangmanSource,
-  'web-scraper': webScraperSource,
-  'memory-match': memoryMatchSource,
-  'simon-says': simonSaysSource,
-  'connect-four': connectFourSource,
-  'maze-runner': mazeRunnerSource,
-  'word-search': wordSearchSource,
-  'sliding-puzzle': slidingPuzzleSource,
+}
+
+const GAME_HINTS = {
+  'shape-sorter': "Try selecting a shape first, then click on the outline slot that matches it! 🧩",
+  'color-splash': "Look at the message at the top! We only want to pop balloons of that specific color! 🎈",
+  'animal-sound-match': "Click the big sound button to hear the sound, then click the correct animal emoji! 🐯",
+  'memory-match': "Flip cards to find pairs! Take your time and try to remember where each card sits. 🃏",
+  'simon-says': "Watch the order of colors flashing! Repeat it step-by-step. 🎵",
+  'word-search': "Look for words in horizontal, vertical, or diagonal rows. Drag from first to last letter! 🔤",
+  'whack-a-mole': "Moles pop up from 9 holes. Tap them quickly before they go down! 🔨",
+  'maze-runner': "Find the path from the smiley face to the flag! Use the arrow keys or D-pad. 🌀",
+  'connect-four': "Drop chips into the slots. Try to get 4 of your red chips in a straight line! 🔴",
+  'sliding-puzzle': "Slide the numbered tiles into the empty space to arrange them in order! 🧩",
+  'tic-tac-toe': "Place X's on the board. Get three in a row to win! Don't let the AI get three O's. ❌",
+  'hangman': "Start by guessing vowels (A, E, O, I, U). It will help you find the secret word! 🪓",
+  'number-guesser': "Use the higher/lower hints! If higher, pick a larger number. If lower, pick a smaller one! 🎯",
+  'quiz': "Read the options carefully, and choose the one that answers the question! 🔬",
+  'text-adventure': "Read each block of story, then tap on the choices to select your path! 🌲"
 }
 
 function AppShell({ apps }) {
@@ -83,6 +78,8 @@ function AppShell({ apps }) {
   const app = apps.find(a => a.id === appId)
   const [showConfetti, setShowConfetti] = useState(false)
   const { awardStars, markPlayed } = useKidsProgress()
+  const [isStuck, setIsStuck] = useState(false)
+  const [mascotMsg, setMascotMsg] = useState('')
 
   useEffect(() => {
     if (appId) {
@@ -90,15 +87,38 @@ function AppShell({ apps }) {
     }
   }, [appId, markPlayed])
 
+  // Stuck timer detection (45 seconds)
+  useEffect(() => {
+    setIsStuck(false)
+    setMascotMsg('')
+    
+    const timer = setTimeout(() => {
+      setIsStuck(true)
+    }, 45000)
+
+    return () => clearTimeout(timer)
+  }, [appId])
+
   // Listen for game win events (celebration)
   useEffect(() => {
     const handleGameWin = (e) => {
       setShowConfetti(true)
       awardStars(appId, e.detail?.stars || 1)
+      setIsStuck(false)
+      setMascotMsg("Wow! You did it! You're a superstar! 🎉🌟")
     }
     window.addEventListener('game-win', handleGameWin)
     return () => window.removeEventListener('game-win', handleGameWin)
   }, [appId, awardStars])
+
+  const handleMascotClick = () => {
+    const hint = GAME_HINTS[appId] || "You are doing great! Keep trying! 🦊✨"
+    setMascotMsg(hint)
+    setIsStuck(false)
+    setTimeout(() => {
+      setMascotMsg('')
+    }, 8000)
+  }
 
   if (!app) {
     return <Navigate to="/404" replace />
@@ -110,6 +130,11 @@ function AppShell({ apps }) {
   return (
     <div className="app-shell">
       <Confetti active={showConfetti} onDone={() => setShowConfetti(false)} />
+
+      {/* Floating Mascot */}
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000 }}>
+        <Mascot message={mascotMsg} isStuck={isStuck} onClick={handleMascotClick} />
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link to="/" className="app-shell__back">

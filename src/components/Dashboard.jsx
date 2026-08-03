@@ -81,7 +81,7 @@ function Dashboard({ apps, progress }) {
 
         <Mascot />
 
-        <h1 className="kids-hero__title">Welcome to GameZone!</h1>
+        <h1 className="kids-hero__title">Welcome to GameZoneKids.com! 🎮</h1>
         <p className="kids-hero__subtitle">
           Fun, colorful & free mini-games made especially for kids. Play, learn & collect stars! ⭐
         </p>
@@ -94,7 +94,7 @@ function Dashboard({ apps, progress }) {
               title="Play today's featured game!"
             >
               <span>🌟 Game of the Day: <strong>{dailyGame.name}</strong></span>
-              <span className="daily-challenge__label">Play Now →</span>
+              <span className="daily-challenge__label">Play for Double Stars! ✨ →</span>
             </button>
           </div>
         )}

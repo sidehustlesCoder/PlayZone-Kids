@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import questionsData from './questions.json'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 const CATEGORIES = Object.keys(questionsData)
 const CATEGORY_ICONS = { Science: '🔬', History: '📜', Tech: '💻' }
@@ -41,13 +42,18 @@ export default function Quiz() {
     setAnswered(true)
     const q = questions[qIdx]
     const correct = optIdx === q.answer
-    if (correct) setScore(s => s + 1)
+    if (correct) {
+      setScore(s => s + 1)
+      playWinSound()
+    } else {
+      playLoseSound()
+    }
     setHistory(h => [...h, { question: q.q, chosen: optIdx, correct: q.answer, wasCorrect: correct }])
   }
 
   const nextQuestion = () => {
     if (qIdx + 1 >= questions.length) {
-      setDone(true)
+      handleDone()
     } else {
       setQIdx(i => i + 1)
       setSelected(null)
@@ -56,7 +62,15 @@ export default function Quiz() {
   }
 
   const pct = Math.round((score / questions.length) * 100)
-  const grade = pct >= 80 ? '🏆 Excellent!' : pct >= 60 ? '👍 Good job!' : pct >= 40 ? '📚 Keep studying!' : '💡 Try again!'
+  const grade = pct >= 80 ? '🏆 You are a Superstar!' : pct >= 60 ? '👍 Awesome job!' : pct >= 40 ? '🌟 Good try! Play again!' : '💡 You can do it! Try again!'
+
+  // Dispatch win event on quiz completion
+  const handleDone = () => {
+    if (pct >= 60) {
+      window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: pct >= 80 ? 2 : 1 } }))
+    }
+    setDone(true)
+  }
 
   // Category selection screen
   if (!category) {
@@ -86,7 +100,7 @@ export default function Quiz() {
             <span className="quiz-results__num">{score}</span>
             <span className="quiz-results__denom">/ {questions.length}</span>
           </div>
-          <div className="quiz-results__pct">{pct}% correct</div>
+          <div className="quiz-results__pct">{pct}% correct 🌟</div>
           <div className="quiz-results__history">
             {history.map((h, i) => (
               <div key={i} className={`quiz-history-item ${h.wasCorrect ? 'correct' : 'wrong'}`}>
@@ -96,8 +110,8 @@ export default function Quiz() {
             ))}
           </div>
           <div className="quiz-results__actions">
-            <button className="quiz-btn quiz-btn--primary" onClick={() => startQuiz(category)}>Play Again</button>
-            <button className="quiz-btn quiz-btn--secondary" onClick={() => setCategory(null)}>Change Category</button>
+            <button className="quiz-btn quiz-btn--primary" onClick={() => startQuiz(category)}>🔄 Try Again!</button>
+            <button className="quiz-btn quiz-btn--secondary" onClick={() => setCategory(null)}>Pick a new category</button>
           </div>
         </div>
       </div>
@@ -148,10 +162,10 @@ export default function Quiz() {
       {answered && (
         <div className="quiz-feedback">
           <span className={selected === q.answer ? 'quiz-feedback--correct' : 'quiz-feedback--wrong'}>
-            {selected === q.answer ? '✓ Correct!' : `✗ The answer was: ${q.options[q.answer]}`}
+            {selected === q.answer ? '🎉 Wow, you found it! Amazing!' : `💡 Almost! The answer was: ${q.options[q.answer]}`}
           </span>
           <button className="quiz-btn quiz-btn--primary" onClick={nextQuestion}>
-            {qIdx + 1 >= questions.length ? 'See Results' : 'Next Question →'}
+            {qIdx + 1 >= questions.length ? '📊 See my results!' : 'Next Question →'}
           </button>
         </div>
       )}

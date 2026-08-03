@@ -1,8 +1,6 @@
-# CodeArcade 🎮
+# GameZoneKids.com 🎮
 
-**Learn Python by playing.** A browser-based platform of interactive Python mini-apps and games powered by [Pyodide](https://pyodide.org) (Python compiled to WebAssembly).
-
-Everything runs 100% client-side — no server, no install, no backend. Just open it in your browser and start playing.
+**Fun, colorful mini-games made just for kids!** A browser-based platform of interactive games that run 100% client-side — no server, no install, no backend. Just open it in your browser and start playing!
 
 ---
 
@@ -19,12 +17,29 @@ npm run dev
 npm run build
 ```
 
+## 🎮 Games Available
+
+- 🃏 **Memory Match** — Flip cards to find matching pairs
+- 🎵 **Simon Says** — Repeat the color sequence
+- 🌀 **Maze Runner** — Navigate from start to finish
+- 🔤 **Word Search** — Find hidden words in a grid
+- 🔴 **Connect Four** — Outsmart the AI, get 4 in a row
+- 🧩 **Sliding Puzzle** — Arrange tiles in the right order
+- 🐯 **Animal Sound Match** — Match animals to their sounds
+- 🎨 **Color Splash** — Pop the right colored balloons
+- 🔨 **Whack-a-Mole** — Tap moles before they disappear
+- 🧩 **Shape Sorter** — Match shapes to their outlines
+- ❌ **Tic-Tac-Toe** — Classic X vs O against the AI
+- 🪓 **Hangman** — Guess the secret word
+- 🎯 **Number Guesser** — Use hints to find the hidden number
+- 🔬 **Quiz** — Test your knowledge
+- 🌲 **Text Adventure** — Choose your own story path
+
 ## 🏗 Architecture
 
 - **React + Vite** — fast frontend tooling
-- **Pyodide** — Python-in-browser via WebAssembly, running in a Web Worker
 - **Hash Routing** — SPA-compatible with GitHub Pages
-- **localStorage** — all persistence (scores, to-dos, game state)
+- **localStorage** — all persistence (scores, game state)
 - **Zero backend** — ships as static files
 
 ## 📁 Project Structure
@@ -32,47 +47,30 @@ npm run build
 ```
 src/
 ├── apps/                   # One folder per mini-app
-│   ├── calculator/
-│   │   ├── logic.py        # Pure Python, no UI code
-│   │   ├── Calculator.jsx  # React UI component
-│   │   └── README.md       # What it does, key concepts
-│   ├── number-guesser/
-│   ├── password-gen/
+│   ├── memory-match/
+│   ├── simon-says/
+│   ├── maze-runner/
+│   ├── word-search/
+│   ├── connect-four/
+│   ├── sliding-puzzle/
+│   ├── animal-sound-match/
+│   ├── color-splash/
+│   ├── whack-a-mole/
+│   ├── shape-sorter/
 │   ├── tic-tac-toe/
-│   ├── quiz/
 │   ├── hangman/
-│   ├── todo/
-│   ├── unit-converter/
-│   ├── text-adventure/
-│   └── data-fetcher/
+│   ├── number-guesser/
+│   ├── quiz/
+│   └── text-adventure/
 ├── shared/
-│   ├── game_interface.py   # Common game state interface
-│   ├── pyodideWorker.js    # Web Worker for Python execution
-│   └── usePyodide.js       # React hook for worker communication
+│   ├── useKidsProgress.js  # Star/progress tracking hook
+│   └── sounds.js           # Sound effects utility
 ├── components/             # Shared UI components
 ├── styles/
 │   └── index.css           # Design system tokens + global styles
 ├── App.jsx                 # Root component with routing
 └── main.jsx                # Entry point
 ```
-
-## 🎯 Adding a New Mini-App
-
-1. Create a folder: `src/apps/your-app-name/`
-2. Add `logic.py` — pure Python logic (no UI imports)
-3. Add `YourApp.jsx` — React component for the UI
-4. Add `README.md` — 2-3 sentences about the app
-5. Register it in `src/App.jsx` → `APP_LIST` array
-6. If it's a game, extend `GameInterface` from `shared/game_interface.py`
-
-## 🎨 Design System
-
-The platform uses a custom design system with:
-- **Space Grotesk** — headings/branding
-- **Inter** — body text
-- **JetBrains Mono** — code display
-- Dark/light theme toggle (persisted)
-- Consistent spacing, color, and typography tokens
 
 ## 📦 Deployment
 

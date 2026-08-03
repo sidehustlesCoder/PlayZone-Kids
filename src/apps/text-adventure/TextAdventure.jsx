@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import storyData from './story.json'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 const STORAGE_KEY = 'codearcade-adventure-save'
 
@@ -21,6 +22,14 @@ export default function TextAdventure() {
     setNodeId(id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodeId: id, history: newHistory }))
     setHasSave(true)
+    playSelectSound()
+    // If navigating to an ending node, fire the win event
+    if (storyData[id]?.ending) {
+      setTimeout(() => {
+        playWinSound()
+        window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+      }, 300)
+    }
   }
 
   const startNew = () => {
@@ -45,6 +54,8 @@ export default function TextAdventure() {
     setHistory([])
   }
 
+  const tagline = "A branching story with many exciting paths and endings!"
+
   // Title screen
   if (!nodeId) {
     return (
@@ -52,7 +63,7 @@ export default function TextAdventure() {
         <div className="adventure-title-screen">
           <div className="adventure-title-screen__deco">🌲 🌿 🍄</div>
           <h2 className="adventure-title-screen__name">The Whispering Forest</h2>
-          <p className="adventure-title-screen__tagline">An interactive story with many paths and endings</p>
+          <p className="adventure-title-screen__tagline">{tagline}</p>
           <div className="adventure-title-screen__actions">
             {hasSave && (
               <button className="adventure-btn adventure-btn--primary" onClick={resumeGame} id="adventure-resume-btn">
@@ -91,11 +102,11 @@ export default function TextAdventure() {
             <p className="adventure-story-text">{node.text}</p>
           </div>
           <p className="adventure-ending__summary">
-            You made {history.length} choice{history.length !== 1 ? 's' : ''} on this journey.
+            🔍 You explored {history.length} chapter{history.length !== 1 ? 's' : ''} on this journey!
           </p>
           <div className="adventure-actions">
             <button className="adventure-btn adventure-btn--primary" onClick={startNew} id="adventure-play-again-btn">
-              🔄 Play Again
+              🔄 Adventure Again!
             </button>
             <button className="adventure-btn adventure-btn--secondary" onClick={resetSave}>
               🗑 Clear Save & Return

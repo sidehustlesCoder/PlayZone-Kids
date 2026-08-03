@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 const WINNING_LINES = [
   [0,1,2],[3,4,5],[6,7,8],
@@ -83,6 +84,7 @@ export default function TicTacToe() {
 
   const handleClick = useCallback((idx) => {
     if (result || board[idx] !== null) return
+    playSelectSound()
 
     const newBoard = [...board]
     newBoard[idx] = current
@@ -91,6 +93,14 @@ export default function TicTacToe() {
       setBoard(newBoard)
       setResult(res)
       setScores(s => ({ ...s, [res.winner]: (s[res.winner] || 0) + 1 }))
+      if (res.winner === 'X') {
+        playWinSound()
+        window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+      } else if (res.winner === 'draw') {
+        playLoseSound()
+      } else {
+        playLoseSound()
+      }
       return
     }
 
@@ -106,6 +116,8 @@ export default function TicTacToe() {
         if (aiRes) {
           setResult(aiRes)
           setScores(s => ({ ...s, [aiRes.winner]: (s[aiRes.winner] || 0) + 1 }))
+          if (aiRes.winner === 'O') playLoseSound()
+          else if (aiRes.winner === 'draw') playLoseSound()
         } else {
           setCurrent('X')
         }
@@ -119,7 +131,7 @@ export default function TicTacToe() {
   if (!started) {
     return (
       <div className="ttt-setup">
-        <h2 className="ttt-setup__title">Tic-Tac-Toe</h2>
+        <h2 className="ttt-setup__title">🎮 Tic-Tac-Toe!</h2>
         <div className="ttt-setup__options">
           <div className="ttt-setup__group">
             <label>Mode</label>
@@ -145,8 +157,9 @@ export default function TicTacToe() {
     )
   }
 
-  const winnerLabel = result?.winner === 'draw' ? "It's a Draw!" :
-    result?.winner ? `${mode === 'vs_ai' && result.winner === 'O' ? '🤖 AI' : `Player ${result.winner}`} Wins!` : null
+  const winnerLabel = result?.winner === 'draw' ? "What a close game! 🤝 It's a Draw!" :
+    result?.winner === 'X' ? '🎉 Woohoo! You won! Amazing job!' :
+    result?.winner ? `${mode === 'vs_ai' ? '🤖 The AI won this time... Try again!' : `🌟 Player ${result.winner} Wins!`}` : null
 
   return (
     <div className="ttt-app">
@@ -170,7 +183,7 @@ export default function TicTacToe() {
       {!result ? (
         <p className="ttt-status">
           <span style={{ color: SYMBOL_COLORS[current] }}>{SYMBOLS[current]}</span>
-          {' '}{current === 'X' ? 'Your turn' : mode === 'vs_ai' ? 'AI is thinking…' : "Player O's turn"}
+          {' '}{current === 'X' ? '🤩 Your turn — make it count!' : mode === 'vs_ai' ? '🤖 AI is thinking...' : "🌀 Player O's turn!"}
         </p>
       ) : (
         <p className="ttt-status ttt-status--result">{winnerLabel}</p>
@@ -199,7 +212,7 @@ export default function TicTacToe() {
 
       {/* Actions */}
       <div className="ttt-actions">
-        <button className="ttt-replay-btn" onClick={startGame}>Play Again</button>
+        <button className="ttt-replay-btn" onClick={startGame}>🔄 Play Again!</button>
         <button className="ttt-back-btn" onClick={() => setStarted(false)}>⚙ Settings</button>
       </div>
     </div>

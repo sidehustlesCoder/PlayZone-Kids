@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usePyodide } from '../../shared/usePyodide'
 import hangmanSource from './logic.py?raw'
+import { playWinSound, playLoseSound, playSelectSound } from '../../shared/sounds'
 
 // SVG hangman parts revealed progressively
 const HANGMAN_PARTS = [
@@ -35,7 +36,7 @@ export default function Hangman() {
         await runPython(hangmanSource)
         setInitialized(true)
       } catch (e) {
-        setError('Failed to initialize Python runtime')
+        setError('Oops! Something went wrong starting the game.')
       }
     }
     init()
@@ -60,6 +61,7 @@ json.dumps(state)
   const guessLetter = useCallback(async (letter) => {
     if (!gameState || gameState.game_over) return
     setError('')
+    playSelectSound()
     try {
       const code = `
 import json
@@ -67,7 +69,19 @@ state = hangman_game.make_move("${letter}")
 json.dumps(state)
 `
       const result = await runPython(code)
-      setGameState(JSON.parse(result))
+      const state = JSON.parse(result)
+      setGameState(state)
+
+      if (state.game_over) {
+        if (state.won) {
+          playWinSound()
+          window.dispatchEvent(new CustomEvent('game-win', { detail: { stars: 1 } }))
+        } else {
+          playLoseSound()
+        }
+      } else if (!state.won && state.wrong_count > gameState.wrong_count) {
+        playLoseSound()
+      }
     } catch (e) {
       setError(e.message)
     }
@@ -82,23 +96,27 @@ json.dumps(state)
   }
 
   if (!initialized) {
-    return <div className="calculator-app__status">⚡ Initializing Pyodide Python WASM Engine...</div>
+    return (
+      <div className="calculator-app__status" style={{ textAlign: 'center', padding: '40px', fontSize: '1.2rem' }}>
+        ⚡ Getting the game ready for you...
+      </div>
+    )
   }
 
   if (!gameState) {
     return (
       <div className="hangman-setup">
-        <h2 className="hangman-setup__title">Hangman</h2>
-        <p className="hangman-setup__desc">Guess the hidden word one letter at a time before the hangman is complete!</p>
+        <h2 className="hangman-setup__title">🪓 Hangman!</h2>
+        <p className="hangman-setup__desc">Try to guess the hidden word one letter at a time before time runs out! You can do it! 💪</p>
         <div className="hangman-setup__difficulty">
-          <label>Difficulty</label>
+          <label>Pick your challenge:</label>
           <div className="ttt-setup__btns">
-            {[['easy','😊 Easy (8 tries)'],['medium','🤔 Medium (7 tries)'],['hard','💀 Hard (6 tries)']].map(([v,l]) => (
+            {[['easy','😊 Easy (8 tries)'],['medium','🤔 Medium (7 tries)'],['hard','🔥 Hard (6 tries)']].map(([v,l]) => (
               <button key={v} className={`ttt-option-btn ${difficulty===v?'active':''}`} onClick={() => setDifficulty(v)}>{l}</button>
             ))}
           </div>
         </div>
-        <button className="ttt-start-btn" onClick={() => startGame(difficulty)} disabled={loading}>Start Game</button>
+        <button className="ttt-start-btn" onClick={() => startGame(difficulty)} disabled={loading}>🎮 Let's Play!</button>
       </div>
     )
   }
@@ -132,7 +150,7 @@ json.dumps(state)
         {/* Game over */}
         {game_over && (
           <div className={`hangman-result ${won ? 'hangman-result--won' : 'hangman-result--lost'}`}>
-            {won ? '🎉 You got it!' : `💀 The word was: ${word}`}
+            {won ? '🎉 You found it! AMAZING! 🌟' : `😢 So close! The word was: ${word}. Try again!`}
           </div>
         )}
 
@@ -144,11 +162,11 @@ json.dumps(state)
               maxLength={1}
               value={inputLetter}
               onChange={e => setInputLetter(e.target.value.replace(/[^a-zA-Z]/g, ''))}
-              placeholder="Type a letter"
+              placeholder="Pick a letter!"
               className="hangman-input"
               autoFocus
             />
-            <button type="submit" className="hangman-guess-btn" disabled={!inputLetter}>Guess</button>
+            <button type="submit" className="hangman-guess-btn" disabled={!inputLetter}>Guess!</button>
           </form>
         )}
 
@@ -176,7 +194,7 @@ json.dumps(state)
 
         {game_over && (
           <div className="hangman-actions">
-            <button className="ttt-replay-btn" onClick={() => startGame()}>Play Again</button>
+            <button className="ttt-replay-btn" onClick={() => startGame()}>🔄 Play Again!</button>
             <button className="ttt-back-btn" onClick={() => setGameState(null)}>⚙ Settings</button>
           </div>
         )}
