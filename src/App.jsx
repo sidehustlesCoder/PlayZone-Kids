@@ -1,202 +1,181 @@
-import { Routes, Route, Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import Dashboard from './components/Dashboard.jsx'
-import AppShell from './components/AppShell.jsx'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, Link, useParams } from 'react-router-dom'
+import Navbar from './components/layout/Navbar.jsx'
+import Sidebar from './components/layout/Sidebar.jsx'
+import Footer from './components/layout/Footer.jsx'
+import ParticleBackground from './components/ui/ParticleBackground.jsx'
+import AchievementToast from './components/ui/AchievementToast.jsx'
+import PWAInstallPrompt from './components/ui/PWAInstallPrompt.jsx'
+import Homepage from './components/pages/Homepage.jsx'
+import PlayerProfile from './components/profile/PlayerProfile.jsx'
+import LeaderboardView from './components/leaderboards/LeaderboardView.jsx'
+import GameShell from './components/game-shell/GameShell.jsx'
 import NotFound from './components/NotFound.jsx'
-import HomeBase from './components/HomeBase.jsx'
-import { useKidsProgress } from './shared/useKidsProgress.js'
+import { useGameStore } from './store/gameStore.js'
+import { getGameById } from './data/gamesRegistry.js'
 
-export const APP_LIST = [
-  // --- Younger band (3-5) ---
-  {
-    id: 'shape-sorter',
-    name: 'Shape Sorter',
-    description: 'Drag or tap shapes to match their outlines! Super fun and simple.',
-    category: 'Kids',
-    icon: '🧩',
-    ageBand: '3-5',
-    difficulty: 'Easy'
-  },
-  {
-    id: 'color-splash',
-    name: 'Color Splash',
-    description: 'Pop balloons of the target color to splash and reveal a mystery animal!',
-    category: 'Kids',
-    icon: '🎈',
-    ageBand: '3-5',
-    difficulty: 'Easy'
-  },
-  {
-    id: 'animal-sound-match',
-    name: 'Animal Sound Match',
-    description: 'Hear a funny sound and guess which cute animal made it!',
-    category: 'Kids',
-    icon: '🔊',
-    ageBand: '3-5',
-    difficulty: 'Easy'
-  },
+// Lazy-load existing game components for high performance code splitting
+const ShapeSorter = lazy(() => import('./apps/shape-sorter/ShapeSorter.jsx'))
+const ColorSplash = lazy(() => import('./apps/color-splash/ColorSplash.jsx'))
+const AnimalSoundMatch = lazy(() => import('./apps/animal-sound-match/AnimalSoundMatch.jsx'))
+const MemoryMatch = lazy(() => import('./apps/memory-match/MemoryMatch.jsx'))
+const SimonSays = lazy(() => import('./apps/simon-says/SimonSays.jsx'))
+const WordSearch = lazy(() => import('./apps/word-search/WordSearch.jsx'))
+const WhackAMole = lazy(() => import('./apps/whack-a-mole/WhackAMole.jsx'))
+const MazeRunner = lazy(() => import('./apps/maze-runner/MazeRunner.jsx'))
+const ConnectFour = lazy(() => import('./apps/connect-four/ConnectFour.jsx'))
+const SlidingPuzzle = lazy(() => import('./apps/sliding-puzzle/SlidingPuzzle.jsx'))
+const TicTacToe = lazy(() => import('./apps/tic-tac-toe/TicTacToe.jsx'))
+const Hangman = lazy(() => import('./apps/hangman/Hangman.jsx'))
+const NumberGuesser = lazy(() => import('./apps/number-guesser/NumberGuesser.jsx'))
+const Quiz = lazy(() => import('./apps/quiz/Quiz.jsx'))
+const TextAdventure = lazy(() => import('./apps/text-adventure/TextAdventure.jsx'))
 
-  // --- Middle band (6-8) ---
-  {
-    id: 'memory-match',
-    name: 'Memory Match',
-    description: 'Flip cards to find matching pairs of emojis. Pick from awesome themes!',
-    category: 'Kids',
-    icon: '🃏',
-    ageBand: '6-8',
-    difficulty: 'Multi'
-  },
-  {
-    id: 'simon-says',
-    name: 'Simon Says',
-    description: 'Watch the flashing colors and repeat the pattern as it gets faster!',
-    category: 'Kids',
-    icon: '🎵',
-    ageBand: '6-8',
-    difficulty: 'Multi'
-  },
-  {
-    id: 'word-search',
-    name: 'Word Search',
-    description: 'Find all the hidden words in the letter grid. Space, animals, or dinosaur themes!',
-    category: 'Kids',
-    icon: '🔤',
-    ageBand: '6-8',
-    difficulty: 'Medium'
-  },
-  {
-    id: 'whack-a-mole',
-    name: 'Whack-a-Mole',
-    description: 'Tap the moles as they pop up from their holes before time runs out!',
-    category: 'Kids',
-    icon: '🔨',
-    ageBand: '6-8',
-    difficulty: 'Medium'
-  },
+// Lazy-load new Phase 3 & Phase 4 Games
+const GalaxyDefender = lazy(() => import('./apps/galaxy-defender/GalaxyDefender.jsx'))
+const BubbleShooter = lazy(() => import('./apps/bubble-shooter/BubbleShooter.jsx'))
+const TempleEscape = lazy(() => import('./apps/temple-escape/TempleEscape.jsx'))
+const TurboRacing = lazy(() => import('./apps/turbo-racing/TurboRacing.jsx'))
+const ShadowNinja = lazy(() => import('./apps/shadow-ninja/ShadowNinja.jsx'))
+const ZombieSurvival = lazy(() => import('./apps/zombie-survival/ZombieSurvival.jsx'))
+const RobotBattle = lazy(() => import('./apps/robot-battle/RobotBattle.jsx'))
+const FruitSlice = lazy(() => import('./apps/fruit-slice/FruitSlice.jsx'))
+const ChessAI = lazy(() => import('./apps/chess-ai/ChessAI.jsx'))
+const SudokuGame = lazy(() => import('./apps/sudoku/Sudoku.jsx'))
+const CricketChampionship = lazy(() => import('./apps/cricket-championship/CricketChampionship.jsx'))
+const FootballPenalty = lazy(() => import('./apps/football-penalty/FootballPenalty.jsx'))
+const BasketballStars = lazy(() => import('./apps/basketball-stars/BasketballStars.jsx'))
+const MotoX = lazy(() => import('./apps/moto-x/MotoX.jsx'))
+const BlockPuzzle = lazy(() => import('./apps/block-puzzle/BlockPuzzle.jsx'))
+const MonsterTruck = lazy(() => import('./apps/monster-truck/MonsterTruck.jsx'))
+const PoliceChase = lazy(() => import('./apps/police-chase/PoliceChase.jsx'))
+const AlienAttack = lazy(() => import('./apps/alien-attack/AlienAttack.jsx'))
+const SamuraiLegends = lazy(() => import('./apps/samurai-legends/SamuraiLegends.jsx'))
+const DinoHunter = lazy(() => import('./apps/dino-hunter/DinoHunter.jsx'))
 
-  // --- Older band (9-12) ---
-  {
-    id: 'maze-runner',
-    name: 'Maze Runner',
-    description: 'Navigate through auto-generated mazes from start to finish! Track your best time.',
-    category: 'Kids',
-    icon: '🌀',
-    ageBand: '9-12',
-    difficulty: 'Multi'
-  },
-  {
-    id: 'connect-four',
-    name: 'Connect Four',
-    description: 'Drop chips into the grid and connect four in a row. Challenge the smart AI!',
-    category: 'Kids',
-    icon: '🔴',
-    ageBand: '9-12',
-    difficulty: 'Multi'
-  },
-  {
-    id: 'sliding-puzzle',
-    name: 'Sliding Puzzle',
-    description: 'Slide the tiles into numerical order. Easy 3×3 or tricky 4×4!',
-    category: 'Kids',
-    icon: '🧩',
-    ageBand: '9-12',
-    difficulty: 'Multi'
-  },
+const GAME_COMPONENTS = {
+  // Phase 1 existing games
+  'shape-sorter': ShapeSorter,
+  'color-splash': ColorSplash,
+  'animal-sound-match': AnimalSoundMatch,
+  'memory-match': MemoryMatch,
+  'simon-says': SimonSays,
+  'word-search': WordSearch,
+  'whack-a-mole': WhackAMole,
+  'maze-runner': MazeRunner,
+  'connect-four': ConnectFour,
+  'sliding-puzzle': SlidingPuzzle,
+  'tic-tac-toe': TicTacToe,
+  'hangman': Hangman,
+  'number-guesser': NumberGuesser,
+  'quiz': Quiz,
+  'text-adventure': TextAdventure,
 
-  // --- Legacy games ---
-  {
-    id: 'tic-tac-toe',
-    name: 'Tic-Tac-Toe',
-    description: 'The classic X and O game! Beat the unbeatable AI or play with a friend.',
-    category: 'Fun',
-    icon: '❌',
-    ageBand: '6-12',
-    difficulty: 'Multi'
-  },
-  {
-    id: 'hangman',
-    name: 'Hangman',
-    description: 'Guess the hidden word letter by letter before time runs out!',
-    category: 'Fun',
-    icon: '🪓',
-    ageBand: '6-12',
-    difficulty: 'Medium'
-  },
-  {
-    id: 'number-guesser',
-    name: 'Number Guessing',
-    description: 'I\'m thinking of a number... can you guess it? Hot or cold hints guide you!',
-    category: 'Fun',
-    icon: '🎯',
-    ageBand: '6-12',
-    difficulty: 'Easy'
-  },
-]
+  // Phase 3 & 4 newly built games
+  'galaxy-defender': GalaxyDefender,
+  'bubble-shooter': BubbleShooter,
+  'temple-escape': TempleEscape,
+  'turbo-racing': TurboRacing,
 
-const KIDS_THEMES = ['candy', 'galaxy', 'ocean', 'jungle']
-const THEME_LABELS = { candy: '🍬', galaxy: '🌌', ocean: '🌊', jungle: '🌿' }
-const THEME_KEY = 'gamezone-kids-theme'
+  // Batch 1 — Featured Action
+  'shadow-ninja': ShadowNinja,
+  'zombie-survival': ZombieSurvival,
+  'robot-battle': RobotBattle,
+
+  // Batch 2 — Arcade & Brain
+  'fruit-slice': FruitSlice,
+  'chess-ai': ChessAI,
+  'sudoku': SudokuGame,
+
+  // Batch 3 — Sports & Racing
+  'cricket-championship': CricketChampionship,
+  'football-penalty': FootballPenalty,
+  'basketball-stars': BasketballStars,
+  'moto-x': MotoX,
+
+  // Batch 4 — Final Arcades, Shooters & Quests
+  'block-puzzle': BlockPuzzle,
+  'monster-truck': MonsterTruck,
+  'police-chase': PoliceChase,
+  'alien-attack': AlienAttack,
+  'samurai-legends': SamuraiLegends,
+  'dino-hunter': DinoHunter,
+}
+
+function GameLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 text-slate-300">
+      <div className="w-12 h-12 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin mb-4" />
+      <p className="text-sm font-bold tracking-wider uppercase text-cyan-300">Loading Game Engine...</p>
+    </div>
+  )
+}
+
+function GamePage() {
+  const { appId } = useParams()
+  const game = getGameById(appId)
+
+  if (!game) return <NotFound />
+
+  const GameComponent = GAME_COMPONENTS[appId]
+
+  if (!GameComponent) {
+    return (
+      <div className="max-w-2xl mx-auto my-12 p-8 rounded-3xl bg-slate-900/90 border border-slate-800 text-center shadow-2xl backdrop-blur-xl">
+        <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 mb-6">
+          ← Back to Games Dashboard
+        </Link>
+        <div className="text-6xl mb-4">{game.icon}</div>
+        <h1 className="text-3xl font-black text-white">{game.name}</h1>
+        <p className="text-sm text-yellow-400 font-bold uppercase tracking-wider my-2">🚀 Launching Soon</p>
+        <p className="text-xs text-slate-400 max-w-md mx-auto">{game.description}</p>
+      </div>
+    )
+  }
+
+  return (
+    <GameShell
+      gameId={appId}
+      render={(gameProps) => (
+        <Suspense fallback={<GameLoader />}>
+          <GameComponent {...gameProps} />
+        </Suspense>
+      )}
+    />
+  )
+}
+
 
 function App() {
-  const [kidsTheme, setKidsTheme] = useState(
-    () => localStorage.getItem(THEME_KEY) || 'candy'
-  )
-  const { progress } = useKidsProgress()
+  const { checkDailyReset, checkAllAchievements } = useGameStore()
 
   useEffect(() => {
-    document.body.setAttribute('data-kids-theme', kidsTheme)
-    document.documentElement.setAttribute('data-kids-theme', kidsTheme)
-    localStorage.setItem(THEME_KEY, kidsTheme)
-  }, [kidsTheme])
-
-  // Apply candy theme on initial mount
-  useEffect(() => {
-    document.body.setAttribute('data-kids-theme', kidsTheme)
-    document.documentElement.setAttribute('data-kids-theme', kidsTheme)
+    checkDailyReset()
+    checkAllAchievements()
+    document.body.classList.add('dark-theme')
   }, [])
 
   return (
-    <>
-      <header className="header">
-        <Link to="/" className="header__logo">
-          <span className="header__logo-icon" aria-hidden="true">🎮</span>
-          GameZone
-        </Link>
+    <div className="platform min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+      <ParticleBackground />
+      <AchievementToast />
+      <PWAInstallPrompt />
 
-        <nav className="header__nav" aria-label="Site navigation">
-          {/* Home Base Link */}
-          <Link to="/profile" className="header-stars" style={{ textDecoration: 'none' }} title="Go to Home Base">
-            🏰 Home Base
-          </Link>
+      <Navbar />
+      <Sidebar />
 
-          {/* Stars counter */}
-          <div className="header-stars" title={`You have ${progress.totalStars} stars!`}>
-            ⭐ {progress.totalStars} Stars
-          </div>
+      <main className="platform__main flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col justify-center">
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/profile" element={<PlayerProfile />} />
+          <Route path="/leaderboard" element={<LeaderboardView />} />
+          <Route path="/app/:appId" element={<GamePage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
 
-          {/* Theme picker */}
-          <div className="theme-picker" aria-label="Pick a color theme">
-            {KIDS_THEMES.map(t => (
-              <button
-                key={t}
-                id={`theme-btn-${t}`}
-                className={`theme-picker__btn theme-picker__btn--${t} ${kidsTheme === t ? 'theme-picker__btn--active' : ''}`}
-                onClick={() => setKidsTheme(t)}
-                title={`${t.charAt(0).toUpperCase() + t.slice(1)} theme`}
-                aria-pressed={kidsTheme === t}
-              />
-            ))}
-          </div>
-        </nav>
-      </header>
-
-      <Routes>
-        <Route path="/" element={<Dashboard apps={APP_LIST} progress={progress} />} />
-        <Route path="/profile" element={<HomeBase progress={progress} />} />
-        <Route path="/app/:appId" element={<AppShell apps={APP_LIST} />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </>
+      <Footer />
+    </div>
   )
 }
 
