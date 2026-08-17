@@ -6,6 +6,14 @@ import { useGameStore } from '../../store/gameStore.js'
 function CategoryGrid() {
   const { setActiveCategory } = useGameStore()
 
+  const handleCategoryClick = (catId) => {
+    setActiveCategory(catId)
+    setTimeout(() => {
+      const el = document.getElementById('all-games')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
   const displayCats = CATEGORIES.filter(c => c.id !== 'all')
 
   return (
@@ -31,7 +39,7 @@ function CategoryGrid() {
             <Link
               to="/"
               className="category-card"
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => handleCategoryClick(cat.id)}
               style={{ '--cat-color': cat.color }}
             >
               <span className="category-card__icon">{cat.icon}</span>

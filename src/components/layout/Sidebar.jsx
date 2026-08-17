@@ -11,6 +11,11 @@ function Sidebar() {
   const handleCategoryClick = (catId) => {
     setActiveCategory(catId)
     setSidebarOpen(false)
+    // Give the sidebar close animation a tick, then scroll to the game grid
+    setTimeout(() => {
+      const el = document.getElementById('all-games')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
   }
 
   return (

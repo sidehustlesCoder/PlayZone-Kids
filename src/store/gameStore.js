@@ -57,7 +57,7 @@ export const useGameStore = create(
       // UI
       sidebarOpen: false,
       searchQuery: '',
-      activeCategory: 'All',
+      activeCategory: 'all',
 
       // Actions
       setSearchQuery: (q) => set({ searchQuery: q }),
