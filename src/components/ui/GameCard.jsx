@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Heart, Play, Star, Clock, Zap } from 'lucide-react'
+import { Heart, Play, Star } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore.js'
 
 const DIFFICULTY_COLORS = {
-  Easy: '#32d74b',
-  Medium: '#ff9f0a',
-  Hard: '#ff375f',
+  Easy:  '#32d74b',
+  Medium:'#ff9f0a',
+  Hard:  '#ff375f',
   Multi: '#bf5af2',
 }
 
@@ -20,28 +20,32 @@ function GameCard({ game, index = 0 }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.5) }}
       className={`game-card ${isComingSoon ? 'game-card--soon' : ''}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Thumbnail Area */}
+      {/* Thumbnail */}
       <div className="game-card__thumb">
-        <div className="game-card__thumb-bg" style={{ background: `linear-gradient(135deg, ${DIFFICULTY_COLORS[game.difficulty] || '#00f5ff'}30, ${DIFFICULTY_COLORS[game.difficulty] || '#00f5ff'}08)` }}>
+        {/* Vivid gradient bg per category */}
+        <div
+          className="game-card__thumb-bg"
+          data-cat={game.category}
+        >
           <span className="game-card__thumb-icon">{game.icon}</span>
         </div>
 
-        {/* Hover Overlay */}
+        {/* Hover "Play Now" overlay */}
         <motion.div
           className="game-card__overlay"
           initial={false}
           animate={{ opacity: hovered && !isComingSoon ? 1 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.18 }}
         >
-          <Link to={`/app/${game.id}`} className="game-card__play-btn">
-            <Play size={28} fill="white" />
+          <Link to={`/app/${game.id}`} className="game-card__play-btn" id={`play-${game.id}`}>
+            <Play size={26} fill="white" />
             <span>Play Now</span>
           </Link>
         </motion.div>
@@ -49,8 +53,8 @@ function GameCard({ game, index = 0 }) {
         {/* Badges */}
         <div className="game-card__badges">
           {game.isNew && <span className="game-card__badge game-card__badge--new">NEW</span>}
-          {game.isFeatured && <span className="game-card__badge game-card__badge--featured"><Zap size={10} /> HOT</span>}
-          {isComingSoon && <span className="game-card__badge game-card__badge--soon">COMING SOON</span>}
+          {game.isFeatured && <span className="game-card__badge game-card__badge--featured">🔥 HOT</span>}
+          {isComingSoon && <span className="game-card__badge game-card__badge--soon">SOON</span>}
         </div>
 
         {/* Favorite */}
@@ -58,8 +62,9 @@ function GameCard({ game, index = 0 }) {
           className={`game-card__fav ${isFav ? 'game-card__fav--active' : ''}`}
           onClick={(e) => { e.preventDefault(); toggleFavorite(game.id) }}
           aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+          id={`fav-${game.id}`}
         >
-          <Heart size={16} fill={isFav ? '#ff375f' : 'none'} />
+          <Heart size={15} fill={isFav ? '#ff375f' : 'none'} />
         </button>
       </div>
 
@@ -71,7 +76,7 @@ function GameCard({ game, index = 0 }) {
         <p className="game-card__desc">{game.description}</p>
 
         <div className="game-card__meta">
-          <span className="game-card__meta-item" style={{ color: DIFFICULTY_COLORS[game.difficulty] }}>
+          <span className="game-card__meta-item" style={{ color: DIFFICULTY_COLORS[game.difficulty] || '#8888aa' }}>
             {game.difficulty}
           </span>
           {game.rating > 0 && (

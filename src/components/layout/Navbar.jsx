@@ -56,6 +56,10 @@ function Navbar() {
               Game<span className="navbar__logo-accent">Zone</span>Kids
             </span>
           </Link>
+          <span className="navbar__free-tag">
+            <span className="navbar__free-tag-dot" />
+            Play Free
+          </span>
         </div>
 
         {/* Center: Search */}
